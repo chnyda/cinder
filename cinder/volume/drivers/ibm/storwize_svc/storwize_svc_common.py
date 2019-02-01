@@ -2030,15 +2030,6 @@ class StorwizeHelpers(object):
 
     # replication cg
     def chrcrelationship(self, relationship, rccg=None):
-        rels = self.ssh.lsrcrelationship(relationship)[0]
-        if rccg and rels['consistency_group_name'] == rccg:
-            LOG.info('relationship %(rel)s is aleady added to group %(grp)s.',
-                     {'rel': relationship, 'grp': rccg})
-            return
-        if not rccg and rels['consistency_group_name'] == '':
-            LOG.info('relationship %(rel)s is aleady removed from group',
-                     {'rel': relationship})
-            return
         self.ssh.chrcrelationship(relationship, rccg)
 
     def get_rccg(self, rccg):
@@ -5347,7 +5338,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             return model_update, None, None
 
         # Add remote copy relationship to rccg
-        added_vols = []
         for volume in add_volumes:
             try:
                 vol_name = (volume.name if not self._active_backend_id else
@@ -5393,8 +5383,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     self._helpers.chrcrelationship(rcrel['name'], rccg_name)
                     if rccg['copy_type'] == 'empty_group':
                         rccg = self._helpers.get_rccg(rccg_name)
-                    added_vols.append({'id': volume.id,
-                                       'group_id': group.id})
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to add the remote copy of volume %(vol)s to "
@@ -5402,7 +5390,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           {'vol': volume.name, 'exception': err})
 
         # Remove remote copy relationship from rccg
-        removed_vols = []
         for volume in remove_volumes:
             try:
                 vol_name = (volume.name if not self._active_backend_id else
@@ -5416,14 +5403,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update['status'] = fields.GroupStatus.ERROR
                 else:
                     self._helpers.chrcrelationship(rcrel['name'])
-                    removed_vols.append({'id': volume.id,
-                                         'group_id': None})
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to remove the remote copy of volume %(vol)s "
                           "from group. Exception: %(exception)s.",
                           {'vol': volume.name, 'exception': err})
-        return model_update, added_vols, removed_vols
+        return model_update, None, None
 
     def _delete_hyperswap_grp(self, group, volumes):
         model_update = {'status': fields.GroupStatus.DELETED}
@@ -5463,7 +5448,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             return model_update, None, None
 
         # Add remote copy relationship to rccg
-        added_vols = []
         for volume in add_volumes:
             hyper_volume = self._helpers.is_volume_hyperswap(volume.name)
             if not hyper_volume:
@@ -5471,7 +5455,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           " of %(vol)s can't be added to hyperswap group.",
                           {'vol': volume.id})
                 model_update['status'] = fields.GroupStatus.ERROR
-                continue
+                return model_update, None, None
             try:
                 rcrel = self._helpers.get_relationship_info(volume.name)
                 if not rcrel:
@@ -5481,8 +5465,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update['status'] = fields.GroupStatus.ERROR
                 else:
                     self._helpers.chrcrelationship(rcrel['name'], rccg_name)
-                    added_vols.append({'id': volume.id,
-                                       'group_id': group.id})
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to add the remote copy of volume %(vol)s to "
@@ -5490,7 +5472,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           {'vol': volume.name, 'exception': err})
 
         # Remove remote copy relationship from rccg
-        removed_vols = []
         for volume in remove_volumes:
             try:
                 rcrel = self._helpers.get_relationship_info(volume.name)
@@ -5501,11 +5482,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update['status'] = fields.GroupStatus.ERROR
                 else:
                     self._helpers.chrcrelationship(rcrel['name'])
-                    removed_vols.append({'id': volume.id,
-                                         'group_id': None})
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to remove the remote copy of volume %(vol)s "
                           "from rccg. Exception: %(exception)s.",
                           {'vol': volume.name, 'exception': err})
-        return model_update, added_vols, removed_vols
+        return model_update, None, None
