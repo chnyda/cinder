@@ -411,11 +411,31 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         """
         LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume.id, 'conn': connector})
-        (info, host_name, vol_name, backend_helper,
-         node_state) = self._get_map_info_from_connector(volume, connector,
-                                                         iscsi=True)
-        if not backend_helper:
-            return info
+        if volume.display_name == 'backup-snapshot':
+            LOG.debug('It is a virtual volume %(vol)s for detach snapshot.',
+                      {'vol': volume.id})
+            vol_name = volume.name
+            backend_helper = self._helpers
+            node_state = self._state
+        else:
+            vol_name, backend_helper, node_state = self._get_vol_sys_info(
+                volume)
+
+        info = {}
+        if 'host' in connector:
+            # get host according to iSCSI protocol
+            info = {'driver_volume_type': 'iscsi',
+                    'data': {}}
+            host_name = backend_helper.get_host_from_connector(connector,
+                                                               iscsi=True)
+            if host_name is None:
+                msg = (_('terminate_connection: Failed to get host name from'
+                         ' connector.'))
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+        else:
+            # See bug #1244257
+            host_name = None
 
         # Unmap volumes, if hostname is None, need to get value from vdiskmap
         host_name = backend_helper.unmap_vol_from_host(vol_name, host_name)
