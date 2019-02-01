@@ -318,9 +318,6 @@ driver:
 - multipath
 - iogrp
 - mirror_pool
-- volume_topology
-- peer_pool
-- host_site
 
 These keys have the same semantics as their counterparts in the
 configuration file. They are set similarly; for example, ``rsize=2`` or
@@ -458,12 +455,6 @@ modify volume types, you can also change these extra specs properties:
 
 -  mirror_pool
 
--  volume_topology
-
--  peer_pool
-
--  host_site
-
 .. note::
 
    When you change the ``rsize``, ``grainsize`` or ``compression``
@@ -533,6 +524,7 @@ default as the ``backend_id``:
    If the synchronization is not done manually, Storwize Block Storage
    service driver will perform the synchronization and do the failback
    after the synchronization is finished.
+<<<<<<< HEAD
 
 Replication group
 <<<<<<<<<<<<<<<<<
@@ -599,3 +591,5 @@ later is required.
 
 A group is created as a hyperswap group with a group-type that has the
 group spec ``hyperswap_group_enabled`` set to ``<is> True``.
+=======
+>>>>>>> parent of c0d471a... Storwize: add hyperswap volume support
